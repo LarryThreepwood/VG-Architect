@@ -23,6 +23,14 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(glm)
 
+# glad
+FetchContent_Declare(
+    glad
+    GIT_REPOSITORY https://github.com/Dav1dde/glad.git
+    GIT_TAG v0.1.36
+)
+FetchContent_MakeAvailable(glad)
+
 # Dear ImGui
 FetchContent_Declare(
     imgui
@@ -47,7 +55,10 @@ if(TARGET glfw AND NOT TARGET vgarchitect::glfw)
     add_library(vgarchitect::glfw ALIAS glfw)
 endif()
 
+if(TARGET glad AND NOT TARGET vgarchitect::glad)
+    add_library(vgarchitect::glad ALIAS glad)
+endif()
+
 if(TARGET imgui AND NOT TARGET vgarchitect::imgui)
     add_library(vgarchitect::imgui ALIAS imgui)
 endif()
-
