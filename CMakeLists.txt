@@ -10,13 +10,9 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-find_package(OpenGL REQUIRED)
-
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
-include(Dependencies)
-
 add_executable(vg_architect
     src/main.cpp
+    src/core/project_state.cpp
 )
 
 add_executable(VGArchitect::App ALIAS vg_architect)
@@ -24,15 +20,6 @@ add_executable(VGArchitect::App ALIAS vg_architect)
 target_include_directories(vg_architect
     PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/include
-)
-
-target_link_libraries(vg_architect
-    PRIVATE
-        vgarchitect::glfw
-        vgarchitect::imgui
-        glm::glm
-        vgarchitect::glad
-        OpenGL::GL
 )
 
 if(MSVC)
