@@ -58,6 +58,29 @@ inline PointKey ToPointKey(double x, double z)
     };
 }
 
+inline std::pair<PointKey, PointKey> CanonicalWallEndpoints(const Wall& wall)
+{
+    const PointKey a = ToPointKey(wall.startX, wall.startZ);
+    const PointKey b = ToPointKey(wall.endX, wall.endZ);
+
+    if (a.x < b.x)
+    {
+        return {a, b};
+    }
+
+    if (a.x > b.x)
+    {
+        return {b, a};
+    }
+
+    if (a.z <= b.z)
+    {
+        return {a, b};
+    }
+
+    return {b, a};
+}
+
 inline double SignedArea(const std::vector<Point>& polygon)
 {
     if (polygon.size() < 3)
@@ -286,19 +309,54 @@ inline void RecomputeRooms(Project& project, std::int32_t floorIndex)
     for (std::size_t wallIndex = 0; wallIndex < floor.walls.size(); ++wallIndex)
     {
         const Wall& wall = floor.walls[wallIndex];
-        const detail::PointKey a = detail::ToPointKey(wall.startX, wall.startZ);
-        const detail::PointKey b = detail::ToPointKey(wall.endX, wall.endZ);
+        const auto canonical = detail::CanonicalWallEndpoints(wall);
+        const detail::PointKey a = canonical.first;
+        const detail::PointKey b = canonical.second;
 
         adjacency[a].push_back({b, wallIndex});
         adjacency[b].push_back({a, wallIndex});
-        keyToPoint[a] = detail::Point{wall.startX, wall.startZ};
-        keyToPoint[b] = detail::Point{wall.endX, wall.endZ};
+        keyToPoint[a] = detail::Point{a.x * detail::kEpsilon, a.z * detail::kEpsilon};
+        keyToPoint[b] = detail::Point{b.x * detail::kEpsilon, b.z * detail::kEpsilon};
     }
 
     std::vector<bool> usedWall(floor.walls.size(), false);
     std::vector<LoopData> loops;
 
-    for (std::size_t startWallIndex = 0; startWallIndex < floor.walls.size(); ++startWallIndex)
+    std::vector<std::size_t> wallOrder(floor.walls.size());
+    for (std::size_t i = 0; i < wallOrder.size(); ++i)
+    {
+        wallOrder[i] = i;
+    }
+
+    std::sort(wallOrder.begin(), wallOrder.end(), [&floor](std::size_t lhs, std::size_t rhs)
+    {
+        const auto lhsCanonical = detail::CanonicalWallEndpoints(floor.walls[lhs]);
+        const auto rhsCanonical = detail::CanonicalWallEndpoints(floor.walls[rhs]);
+
+        if (lhsCanonical.first.x != rhsCanonical.first.x)
+        {
+            return lhsCanonical.first.x < rhsCanonical.first.x;
+        }
+
+        if (lhsCanonical.first.z != rhsCanonical.first.z)
+        {
+            return lhsCanonical.first.z < rhsCanonical.first.z;
+        }
+
+        if (lhsCanonical.second.x != rhsCanonical.second.x)
+        {
+            return lhsCanonical.second.x < rhsCanonical.second.x;
+        }
+
+        if (lhsCanonical.second.z != rhsCanonical.second.z)
+        {
+            return lhsCanonical.second.z < rhsCanonical.second.z;
+        }
+
+        return lhs < rhs;
+    });
+
+    for (std::size_t startWallIndex : wallOrder)
     {
         if (usedWall[startWallIndex])
         {
@@ -306,9 +364,10 @@ inline void RecomputeRooms(Project& project, std::int32_t floorIndex)
         }
 
         const Wall& startWall = floor.walls[startWallIndex];
-        const detail::PointKey start = detail::ToPointKey(startWall.startX, startWall.startZ);
+        const auto startCanonical = detail::CanonicalWallEndpoints(startWall);
+        const detail::PointKey start = startCanonical.first;
         detail::PointKey current = start;
-        detail::PointKey next = detail::ToPointKey(startWall.endX, startWall.endZ);
+        detail::PointKey next = startCanonical.second;
 
         std::vector<detail::Point> polygon;
         std::vector<std::string> wallIds;
