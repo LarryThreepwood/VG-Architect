@@ -51,6 +51,3 @@ if(TARGET imgui AND NOT TARGET vgarchitect::imgui)
     add_library(vgarchitect::imgui ALIAS imgui)
 endif()
 
-if(TARGET glm::glm AND NOT TARGET vgarchitect::glm)
-    add_library(vgarchitect::glm ALIAS glm::glm)
-endif()

@@ -28,7 +28,7 @@ target_link_libraries(vg_architect
     PRIVATE
         vgarchitect::glfw
         vgarchitect::imgui
-        vgarchitect::glm
+        glm::glm
 )
 
 if(MSVC)
