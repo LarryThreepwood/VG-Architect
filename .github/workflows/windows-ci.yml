@@ -16,6 +16,12 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Setup MSVC build environment
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Setup CMake
+        uses: jwlawson/actions-setup-cmake@v2
+
       - name: Configure
         run: >-
           cmake -S . -B build
@@ -23,4 +29,11 @@ jobs:
           -A x64
 
       - name: Build
-        run: cmake --build build --config Release --parallel
+        run: cmake --build build --config Release --target vg_architect --parallel
+
+      - name: Upload executable artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: vg-architect-windows-x64
+          path: build/Release/vg_architect.exe
+          if-no-files-found: error
