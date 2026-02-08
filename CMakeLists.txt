@@ -6,20 +6,17 @@ if(NOT WIN32)
     message(FATAL_ERROR "VG Architect is a Windows-only application.")
 endif()
 
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 add_executable(vg_architect
-    src/main.cpp
-    src/core/project_state.cpp
+    src/app/main.cpp
 )
-
-add_executable(VGArchitect::App ALIAS vg_architect)
 
 target_include_directories(vg_architect
     PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/core/include
 )
 
 if(MSVC)
