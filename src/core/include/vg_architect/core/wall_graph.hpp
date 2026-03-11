@@ -63,21 +63,26 @@ inline WallGraph BuildWallGraph(const Project& project, std::int32_t floorIndex)
         keyToIdx[p.first] = idx++;
     }
 
+    std::map<std::pair<int, int>, std::string> uniqueEdges;
     for (const auto& w : floor->walls) {
         int a = keyToIdx[toPK(w.startX, w.startZ)];
         int b = keyToIdx[toPK(w.endX, w.endZ)];
-        GraphEdge edge;
-        if (a < b) { edge.nodeA = a; edge.nodeB = b; }
-        else { edge.nodeA = b; edge.nodeB = a; }
-        edge.wallId = w.id;
-        graph.edges.push_back(edge);
+        if (a == b) continue;
+        if (a > b) std::swap(a, b);
+
+        auto it = uniqueEdges.find({a, b});
+        if (it == uniqueEdges.end() || w.id < it->second) {
+            uniqueEdges[{a, b}] = w.id;
+        }
     }
 
-    std::sort(graph.edges.begin(), graph.edges.end(), [](const GraphEdge& a, const GraphEdge& b) {
-        if (a.nodeA != b.nodeA) return a.nodeA < b.nodeA;
-        if (a.nodeB != b.nodeB) return a.nodeB < b.nodeB;
-        return a.wallId < b.wallId;
-    });
+    for (const auto& edgePair : uniqueEdges) {
+        GraphEdge edge;
+        edge.nodeA = edgePair.first.first;
+        edge.nodeB = edgePair.first.second;
+        edge.wallId = edgePair.second;
+        graph.edges.push_back(edge);
+    }
 
     for (size_t i = 0; i < graph.edges.size(); ++i) {
         graph.nodes[graph.edges[i].nodeA].incidentEdges.push_back(static_cast<int>(i));
