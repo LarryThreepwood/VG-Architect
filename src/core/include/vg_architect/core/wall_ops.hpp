@@ -12,6 +12,10 @@
 #include <utility>
 #include <vector>
 
+#include "vg_architect/core/wall_graph.hpp"
+#include "vg_architect/core/half_edge_topology.hpp"
+#include "vg_architect/core/room_detection.hpp"
+
 namespace vg_architect::core
 {
 namespace detail
@@ -293,207 +297,16 @@ inline void RecomputeRooms(Project& project, std::int32_t floorIndex)
     Floor& floor = *floorIt;
     floor.rooms.clear();
 
-    struct LoopData
+    const auto graph = BuildWallGraph(project, floorIndex);
+    const auto topology = BuildHalfEdgeTopology(graph);
+    const auto detectedRooms = DetectRooms(graph, topology);
+
+    for (const auto& dr : detectedRooms)
     {
-        std::vector<detail::Point> vertices;
-        std::vector<std::string> wallIds;
-        detail::Point samplePoint;
-        double absArea = 0.0;
-        int depth = 0;
-        bool isInterior = false;
-    };
-
-    std::unordered_map<detail::PointKey, std::vector<std::pair<detail::PointKey, std::size_t>>, detail::PointKeyHasher> adjacency;
-    std::unordered_map<detail::PointKey, detail::Point, detail::PointKeyHasher> keyToPoint;
-
-    for (std::size_t wallIndex = 0; wallIndex < floor.walls.size(); ++wallIndex)
-    {
-        const Wall& wall = floor.walls[wallIndex];
-        const auto canonical = detail::CanonicalWallEndpoints(wall);
-        const detail::PointKey a = canonical.first;
-        const detail::PointKey b = canonical.second;
-
-        adjacency[a].push_back({b, wallIndex});
-        adjacency[b].push_back({a, wallIndex});
-        keyToPoint[a] = detail::Point{a.x * detail::kEpsilon, a.z * detail::kEpsilon};
-        keyToPoint[b] = detail::Point{b.x * detail::kEpsilon, b.z * detail::kEpsilon};
-    }
-
-    std::vector<bool> usedWall(floor.walls.size(), false);
-    std::vector<LoopData> loops;
-
-    std::vector<std::size_t> wallOrder(floor.walls.size());
-    for (std::size_t i = 0; i < wallOrder.size(); ++i)
-    {
-        wallOrder[i] = i;
-    }
-
-    std::sort(wallOrder.begin(), wallOrder.end(), [&floor](std::size_t lhs, std::size_t rhs)
-    {
-        const auto lhsCanonical = detail::CanonicalWallEndpoints(floor.walls[lhs]);
-        const auto rhsCanonical = detail::CanonicalWallEndpoints(floor.walls[rhs]);
-
-        if (lhsCanonical.first.x != rhsCanonical.first.x)
-        {
-            return lhsCanonical.first.x < rhsCanonical.first.x;
-        }
-
-        if (lhsCanonical.first.z != rhsCanonical.first.z)
-        {
-            return lhsCanonical.first.z < rhsCanonical.first.z;
-        }
-
-        if (lhsCanonical.second.x != rhsCanonical.second.x)
-        {
-            return lhsCanonical.second.x < rhsCanonical.second.x;
-        }
-
-        if (lhsCanonical.second.z != rhsCanonical.second.z)
-        {
-            return lhsCanonical.second.z < rhsCanonical.second.z;
-        }
-
-        return lhs < rhs;
-    });
-
-    for (std::size_t startWallIndex : wallOrder)
-    {
-        if (usedWall[startWallIndex])
-        {
-            continue;
-        }
-
-        const Wall& startWall = floor.walls[startWallIndex];
-        const auto startCanonical = detail::CanonicalWallEndpoints(startWall);
-        const detail::PointKey start = startCanonical.first;
-        detail::PointKey current = start;
-        detail::PointKey next = startCanonical.second;
-
-        std::vector<detail::Point> polygon;
-        std::vector<std::string> wallIds;
-        std::unordered_set<std::size_t> localUsed;
-
-        polygon.push_back(keyToPoint[current]);
-
-        bool validLoop = true;
-        while (true)
-        {
-            std::size_t edgeIndex = static_cast<std::size_t>(-1);
-            bool found = false;
-            for (const auto& candidate : adjacency[current])
-            {
-                if (candidate.first == next)
-                {
-                    edgeIndex = candidate.second;
-                    found = true;
-                    break;
-                }
-            }
-
-            if (!found || localUsed.find(edgeIndex) != localUsed.end())
-            {
-                validLoop = false;
-                break;
-            }
-
-            localUsed.insert(edgeIndex);
-            wallIds.push_back(floor.walls[edgeIndex].id);
-
-            current = next;
-            polygon.push_back(keyToPoint[current]);
-
-            if (current == start)
-            {
-                break;
-            }
-
-            const auto& neighbors = adjacency[current];
-            if (neighbors.size() != 2)
-            {
-                validLoop = false;
-                break;
-            }
-
-            const detail::PointKey n0 = neighbors[0].first;
-            const detail::PointKey n1 = neighbors[1].first;
-            if (n0 == next)
-            {
-                next = n1;
-            }
-            else if (n1 == next)
-            {
-                next = n0;
-            }
-            else
-            {
-                validLoop = false;
-                break;
-            }
-        }
-
-        if (!validLoop || polygon.size() < 4)
-        {
-            continue;
-        }
-
-        for (std::size_t index : localUsed)
-        {
-            usedWall[index] = true;
-        }
-
-        polygon.pop_back();
-
-        double area = detail::SignedArea(polygon);
-        if (std::abs(area) <= detail::kEpsilon)
-        {
-            continue;
-        }
-
-        if (area < 0.0)
-        {
-            std::reverse(polygon.begin(), polygon.end());
-            std::reverse(wallIds.begin(), wallIds.end());
-            area = -area;
-        }
-
-        LoopData loop;
-        loop.vertices = std::move(polygon);
-        loop.wallIds = std::move(wallIds);
-        loop.samplePoint = detail::PolygonCentroid(loop.vertices);
-        loop.absArea = area;
-        loops.push_back(std::move(loop));
-    }
-
-    for (std::size_t i = 0; i < loops.size(); ++i)
-    {
-        int containerCount = 0;
-        for (std::size_t j = 0; j < loops.size(); ++j)
-        {
-            if (i == j)
-            {
-                continue;
-            }
-
-            if (detail::PointInPolygon(loops[i].samplePoint, loops[j].vertices))
-            {
-                ++containerCount;
-            }
-        }
-
-        loops[i].depth = containerCount + 1;
-        loops[i].isInterior = (loops[i].depth % 2) == 1;
-    }
-
-    for (const LoopData& loop : loops)
-    {
-        if (!loop.isInterior)
-        {
-            continue;
-        }
-
         Room room;
+        room.id = dr.id;
         room.floorIndex = floorIndex;
-        room.boundaryWallIds = loop.wallIds;
+        room.boundaryWallIds = dr.wallIds;
         floor.rooms.push_back(std::move(room));
     }
 }
