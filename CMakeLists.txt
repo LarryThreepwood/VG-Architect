@@ -28,6 +28,7 @@ enable_testing()
 add_executable(vg_architect_tests
     tests/test_main.cpp
     tests/test_geometry_export.cpp
+    tests/test_wall_graph.cpp
 )
 
 target_include_directories(vg_architect_tests
