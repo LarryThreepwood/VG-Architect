@@ -47,15 +47,15 @@ TEST_CASE("WallGraph Construction", "[graph]")
         // w2: n1-n3
         // w3: n1-n2
 
-        // Edge sorting (nodeA, nodeB, id):
-        // 1. (0, 1, "w1") -> e0
-        // 2. (1, 2, "w3") -> e1
-        // 3. (1, 3, "w2") -> e2
+        // Edge sorting (nodeA, nodeB):
+        // 1. (0, 1) -> e0 (w1)
+        // 2. (1, 2) -> e1 (w3)
+        // 3. (1, 3) -> e2 (w2)
 
         REQUIRE(graph.edges.size() == 3);
-        CHECK(graph.edges[0].wallId == "w1");
-        CHECK(graph.edges[1].wallId == "w3");
-        CHECK(graph.edges[2].wallId == "w2");
+        CHECK(graph.edges[0].wallIds[0] == "w1");
+        CHECK(graph.edges[1].wallIds[0] == "w3");
+        CHECK(graph.edges[2].wallIds[0] == "w2");
 
         // Incident edges:
         // n0: {0}
@@ -81,6 +81,34 @@ TEST_CASE("WallGraph Construction", "[graph]")
         WallGraph g2 = BuildWallGraph(p2, 0);
         REQUIRE(g2.nodes.size() == 3);
     }
+}
+
+TEST_CASE("WallGraph Consolidation", "[graph]")
+{
+    Project project;
+    project.floors.push_back({0, {}, {}});
+
+    // Duplicate walls
+    project.floors[0].walls.push_back({"w1", 0, 0.0, 0.0, 100.0, 0.0, 300, 20});
+    project.floors[0].walls.push_back({"w1_dup", 0, 0.0, 0.0, 100.0, 0.0, 300, 20});
+
+    // Reverse wall
+    project.floors[0].walls.push_back({"w2", 0, 100.0, 0.0, 100.0, 100.0, 300, 20});
+    project.floors[0].walls.push_back({"w2_rev", 0, 100.0, 100.0, 100.0, 0.0, 300, 20});
+
+    WallGraph graph = BuildWallGraph(project, 0);
+
+    REQUIRE(graph.edges.size() == 2);
+
+    // Edge 0: (0,0) to (100,0)
+    REQUIRE(graph.edges[0].wallIds.size() == 2);
+    CHECK(graph.edges[0].wallIds[0] == "w1");
+    CHECK(graph.edges[0].wallIds[1] == "w1_dup");
+
+    // Edge 1: (100,0) to (100,100)
+    REQUIRE(graph.edges[1].wallIds.size() == 2);
+    CHECK(graph.edges[1].wallIds[0] == "w2");
+    CHECK(graph.edges[1].wallIds[1] == "w2_rev");
 }
 
 TEST_CASE("Empty Graph", "[graph]")

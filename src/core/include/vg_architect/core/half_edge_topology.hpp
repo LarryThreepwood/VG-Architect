@@ -52,7 +52,7 @@ inline HalfEdgeTopology BuildHalfEdgeTopology(const WallGraph& graph)
             };
             double angA = getAngle(a), angB = getAngle(b);
             if (std::abs(angA - angB) > 1e-9) return angA < angB;
-            return graph.edges[topology.halfEdges[a].edgeIndex].wallId < graph.edges[topology.halfEdges[b].edgeIndex].wallId;
+            return graph.edges[topology.halfEdges[a].edgeIndex].wallIds[0] < graph.edges[topology.halfEdges[b].edgeIndex].wallIds[0];
         });
 
         topology.nodeFirstHalfEdge[i] = outgoing[0];

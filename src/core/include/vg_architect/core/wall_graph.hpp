@@ -20,7 +20,7 @@ struct GraphEdge
 {
     int nodeA = -1;
     int nodeB = -1;
-    std::string wallId;
+    std::vector<std::string> wallIds;
 };
 
 struct WallGraph
@@ -63,25 +63,23 @@ inline WallGraph BuildWallGraph(const Project& project, std::int32_t floorIndex)
         keyToIdx[p.first] = idx++;
     }
 
-    std::map<std::pair<int, int>, std::string> uniqueEdges;
+    std::map<std::pair<int, int>, std::vector<std::string>> edgeConsolidation;
     for (const auto& w : floor->walls) {
         int a = keyToIdx[toPK(w.startX, w.startZ)];
         int b = keyToIdx[toPK(w.endX, w.endZ)];
         if (a == b) continue;
         if (a > b) std::swap(a, b);
 
-        auto it = uniqueEdges.find({a, b});
-        if (it == uniqueEdges.end() || w.id < it->second) {
-            uniqueEdges[{a, b}] = w.id;
-        }
+        edgeConsolidation[{a, b}].push_back(w.id);
     }
 
-    for (const auto& edgePair : uniqueEdges) {
+    for (auto& edgePair : edgeConsolidation) {
         GraphEdge edge;
         edge.nodeA = edgePair.first.first;
         edge.nodeB = edgePair.first.second;
-        edge.wallId = edgePair.second;
-        graph.edges.push_back(edge);
+        edge.wallIds = std::move(edgePair.second);
+        std::sort(edge.wallIds.begin(), edge.wallIds.end());
+        graph.edges.push_back(std::move(edge));
     }
 
     for (size_t i = 0; i < graph.edges.size(); ++i) {

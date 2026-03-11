@@ -75,6 +75,7 @@ TEST_CASE("Geometry Robustness Edge Cases", "[geometry][robustness]")
 
         RecomputeRooms(project, 0);
         CHECK(project.floors[0].rooms.size() == 1);
+        // Consolidated logic should yield 5 wall IDs
         CHECK(project.floors[0].rooms[0].boundaryWallIds.size() == 5);
     }
 
@@ -96,10 +97,10 @@ TEST_CASE("Geometry Robustness Edge Cases", "[geometry][robustness]")
         // std::vector<FaceCycle> faces = ExtractFaces(g, t);
         // for(auto& f : faces) { printf("Face area: %f, edges: %zu\n", f.signedArea, f.halfEdges.size()); }
 
-        // If duplicate walls exist, they form a zero-area face between them.
-        // w1 and w1_dup form a loop: (0,0) -> (100,0) [w1] -> (0,0) [w1_dup]
-        // This 'pinch' might be taking the half-edges that w4 and w2 need to form the large square.
-        CHECK(project.floors[0].rooms.size() == 1);
+        // Geometric consolidation: w1 and w1_dup become a single edge.
+        // No 'pinch' loop should occur.
+        REQUIRE(project.floors[0].rooms.size() == 1);
+        CHECK(project.floors[0].rooms[0].boundaryWallIds.size() == 5); // w1, w1_dup, w2, w3, w4
     }
 
     SECTION("5. Reverse-order walls")
@@ -111,7 +112,8 @@ TEST_CASE("Geometry Robustness Edge Cases", "[geometry][robustness]")
         project.floors[0].walls.push_back({"w4", 0, 0.0, 100.0, 0.0, 0.0, 300, 20});
 
         RecomputeRooms(project, 0);
-        CHECK(project.floors[0].rooms.size() == 1);
+        REQUIRE(project.floors[0].rooms.size() == 1);
+        CHECK(project.floors[0].rooms[0].boundaryWallIds.size() == 5);
     }
 
     SECTION("6. Floating-point noise")

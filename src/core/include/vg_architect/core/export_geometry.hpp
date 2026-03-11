@@ -102,6 +102,7 @@ inline ExportedProject ExportProject(const Project& project)
             exportedRoom.id = "room_" + ss.str();
 
             std::unordered_map<detail::PointKey, std::vector<detail::PointKey>, detail::PointKeyHasher> adj;
+            std::unordered_map<detail::PointKey, detail::Point, detail::PointKeyHasher> keyToOrigPoint;
             std::vector<detail::PointKey> allKeys;
             for (const std::string& wallId : room.boundaryWallIds)
             {
@@ -111,8 +112,16 @@ inline ExportedProject ExportProject(const Project& project)
                     const Wall* w = it->second;
                     detail::PointKey pkA = detail::ToPointKey(w->startX, w->startZ);
                     detail::PointKey pkB = detail::ToPointKey(w->endX, w->endZ);
-                    adj[pkA].push_back(pkB);
-                    adj[pkB].push_back(pkA);
+
+                    auto addAdj = [&](const detail::PointKey& from, const detail::PointKey& to) {
+                        auto& list = adj[from];
+                        if (std::find(list.begin(), list.end(), to) == list.end()) list.push_back(to);
+                    };
+                    addAdj(pkA, pkB);
+                    addAdj(pkB, pkA);
+
+                    keyToOrigPoint[pkA] = {w->startX, w->startZ};
+                    keyToOrigPoint[pkB] = {w->endX, w->endZ};
 
                     bool foundA = false;
                     for (const auto& k : allKeys) if (k == pkA) { foundA = true; break; }
@@ -145,7 +154,8 @@ inline ExportedProject ExportProject(const Project& project)
                     std::vector<ExportedPoint> vertices;
                     for (size_t i = 0; i < 1000; ++i)
                     {
-                        vertices.push_back({static_cast<double>(currentKey.x) * detail::kEpsilon, static_cast<double>(currentKey.z) * detail::kEpsilon});
+                        const auto& orig = keyToOrigPoint[currentKey];
+                        vertices.push_back({orig.x, orig.z});
 
                         auto it_current = adj.find(currentKey);
                         if (it_current == adj.end() || it_current->second.size() < 2) break;

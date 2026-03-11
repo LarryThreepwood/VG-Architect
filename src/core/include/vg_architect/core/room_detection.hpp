@@ -29,8 +29,13 @@ inline std::vector<DetectedRoom> DetectRooms(const WallGraph& graph, const HalfE
             room.nodeIndices = cycle.nodeIndices;
             room.area = cycle.signedArea;
             for (int heIdx : cycle.halfEdges) {
-                room.wallIds.push_back(graph.edges[topology.halfEdges[heIdx].edgeIndex].wallId);
+                const auto& edge = graph.edges[topology.halfEdges[heIdx].edgeIndex];
+                for (const auto& wid : edge.wallIds) {
+                    room.wallIds.push_back(wid);
+                }
             }
+            std::sort(room.wallIds.begin(), room.wallIds.end());
+            room.wallIds.erase(std::unique(room.wallIds.begin(), room.wallIds.end()), room.wallIds.end());
             validRooms.push_back(std::move(room));
         }
     }
