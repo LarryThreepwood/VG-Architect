@@ -22,3 +22,22 @@ target_include_directories(vg_architect
 if(MSVC)
     target_compile_options(vg_architect PRIVATE /W4 /permissive-)
 endif()
+
+enable_testing()
+
+add_executable(vg_architect_tests
+    tests/test_main.cpp
+    tests/test_geometry_export.cpp
+)
+
+target_include_directories(vg_architect_tests
+    PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/core/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/external
+)
+
+if(MSVC)
+    target_compile_options(vg_architect_tests PRIVATE /W4 /permissive-)
+endif()
+
+add_test(NAME AllTests COMMAND vg_architect_tests)

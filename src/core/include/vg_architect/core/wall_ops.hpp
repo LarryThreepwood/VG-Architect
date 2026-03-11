@@ -278,6 +278,8 @@ inline bool RemoveWall(Project& project, const std::string& wallId, std::string&
     return false;
 }
 
+// NOTE: The room traversal logic in RecomputeRooms will be revisited in a future phase.
+// Current implementation may have issues with loop detection in certain configurations.
 inline void RecomputeRooms(Project& project, std::int32_t floorIndex)
 {
     auto floorIt = std::find_if(project.floors.begin(), project.floors.end(), [floorIndex](const Floor& floor)
