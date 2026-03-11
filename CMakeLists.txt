@@ -30,6 +30,7 @@ add_executable(vg_architect_tests
     tests/test_geometry_export.cpp
     tests/test_wall_graph.cpp
     tests/test_half_edge_topology.cpp
+    tests/test_face_extraction.cpp
 )
 
 target_include_directories(vg_architect_tests

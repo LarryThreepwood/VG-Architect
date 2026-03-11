@@ -89,26 +89,31 @@ inline HalfEdgeTopology BuildHalfEdgeTopology(const WallGraph& graph)
 
         topology.nodeFirstHalfEdge[i] = incidentHalfEdges[0];
 
-        // Link next/prev around each node for face traversal
-        // next(he) is the twin of the previous edge in the angular order at the origin vertex
-        // actually for face extraction (right hand rule), next(he) is:
-        // go to he.dest, find its twin in its angular order...
-        // wait, let's just do next/prev links for face traversal in the next step.
-        // the request says: "Link next and prev relationships between half-edges around each node."
-        // at each vertex, we have a list of half-edges originating from it.
-        // let's link he[j].prev = he[j-1].twin, he[j].next = he[j+1].twin... wait.
-        // let's follow standard DCEL: face traversal is he.next = next half-edge in CCW face.
+        // Link next/prev around each node for face traversal.
+        // In a planar graph, if we are at vertex V, having arrived via half-edge H1 (pointing to V),
+        // the "next" half-edge in the face traversal is the outgoing half-edge H2 (originating at V)
+        // that is immediately *clockwise* from the twin of H1.
+
+        // My incidentHalfEdges is sorted CCW (atan2 returns -PI to PI).
+        // So for a given he pointing to this node, its twin is in this list.
+        // The CCW "next" face edge is the *previous* he in the CCW angular order.
 
         for (size_t j = 0; j < incidentHalfEdges.size(); ++j)
         {
-            int currentHEIdx = incidentHalfEdges[j];
-            int nextHEIdxInVertexOrder = incidentHalfEdges[(j + 1) % incidentHalfEdges.size()];
-            int prevHEIdxInVertexOrder = incidentHalfEdges[(j + incidentHalfEdges.size() - 1) % incidentHalfEdges.size()];
+            int currentOutgoingHEIdx = incidentHalfEdges[j];
+            int prevOutgoingHEIdx = incidentHalfEdges[(j + incidentHalfEdges.size() - 1) % incidentHalfEdges.size()];
 
-            // Standard face traversal logic:
-            // next(he_twin) = the next half-edge in CCW order around the destination node
-            topology.halfEdges[topology.halfEdges[currentHEIdx].twin].next = nextHEIdxInVertexOrder;
-            topology.halfEdges[nextHEIdxInVertexOrder].prev = topology.halfEdges[currentHEIdx].twin;
+            // The face traversal moves from an incoming edge to an outgoing edge.
+            // If he_incoming = twin(currentOutgoingHEIdx), then the next edge in the face
+            // is the outgoing edge that is immediately CCW around the vertex.
+            // Wait, standard face traversal (inner) uses "left turns", which corresponds
+            // to picking the next edge in CCW order at the destination vertex.
+
+            int incomingHEIdx = topology.halfEdges[currentOutgoingHEIdx].twin;
+            int nextOutgoingInFace = prevOutgoingHEIdx; // Right-hand rule (CW order around vertex)
+
+            topology.halfEdges[incomingHEIdx].next = nextOutgoingInFace;
+            topology.halfEdges[nextOutgoingInFace].prev = incomingHEIdx;
         }
     }
 
